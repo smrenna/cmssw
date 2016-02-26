@@ -77,8 +77,8 @@ _reco.KFFitterForRefitOutsideIn.Propagator = 'SmartPropagatorAny'
 _reco.KFSmootherForRefitOutsideIn.Propagator = 'SmartPropagator'
 
 # replace the standard ecal-driven seeds with the FastSim emulated ones
-import FastSimulation.Tracking.globalCombinedSeeds_cfi
-_reco.newCombinedSeeds = FastSimulation.Tracking.globalCombinedSeeds_cfi.newCombinedSeeds
+import FastSimulation.Tracking.ElectronSeeds_cff
+_reco.newCombinedSeeds = FastSimulation.Tracking.ElectronSeeds_cff.newCombinedSeeds
 _reco.globalreco.insert(0,_reco.newCombinedSeeds)
 
 ##########################################
@@ -170,14 +170,11 @@ _reco.tevMuons.RefitterParameters.Propagator = "SmartPropagatorAny"
 ##########################################
 # FastSim changes to jet/met reconstruction
 ##########################################
-# not commisoned and not relevant in FastSim (?):
-_reco.jetHighLevelReco.remove(_reco.recoJetAssociationsExplicit)
-
-# not commisoned and not relevant in FastSim (?):
-_reco.metreco.remove(_reco.BeamHaloId)
-
-# not commisoned and not relevant in FastSim (?):
-_reco.metrecoPlusHCALNoise.remove(_reco.hcalnoise)
+# CSCHaloData depends on cosmic muons, not available in fastsim
+_reco.BeamHaloId.remove(_reco.CSCHaloData)
+# GlobalHaloData and BeamHaloSummary depend on CSCHaloData
+_reco.BeamHaloId.remove(_reco.GlobalHaloData)
+_reco.BeamHaloId.remove(_reco.BeamHaloSummary)
 
 ############################################
 # deleting modules to avoid clashes with part of reconstruction run before mixing

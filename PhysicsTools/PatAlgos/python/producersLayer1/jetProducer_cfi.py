@@ -38,19 +38,19 @@ patJets = cms.EDProducer("PATJetProducer",
     discriminatorSources = cms.VInputTag(
         cms.InputTag("pfJetBProbabilityBJetTags"),
         cms.InputTag("pfJetProbabilityBJetTags"),
-        cms.InputTag("pfTrackCountingHighPurBJetTags"),
+#        cms.InputTag("pfTrackCountingHighPurBJetTags"),
         cms.InputTag("pfTrackCountingHighEffBJetTags"),
         cms.InputTag("pfSimpleSecondaryVertexHighEffBJetTags"),
-        cms.InputTag("pfSimpleSecondaryVertexHighPurBJetTags"),
+#        cms.InputTag("pfSimpleInclusiveSecondaryVertexHighEffBJetTags"),
+#        cms.InputTag("pfSimpleSecondaryVertexHighPurBJetTags"),
         cms.InputTag("pfCombinedSecondaryVertexV2BJetTags"),
         cms.InputTag("pfCombinedInclusiveSecondaryVertexV2BJetTags"),
         cms.InputTag("softPFMuonBJetTags"),
         cms.InputTag("softPFElectronBJetTags"),
-        cms.InputTag("pfCombinedMVABJetTags"),
-        cms.InputTag("pfCombinedMVAV2BJetTags")
-        #CTagging -- temporary commented out waiting for RelVals
-        ## cms.InputTag('pfCombinedCvsLJetTags'),
-        ## cms.InputTag('pfCombinedCvsBJetTags')
+        cms.InputTag("pfCombinedMVAV2BJetTags"),
+        #CTagging
+        cms.InputTag('pfCombinedCvsLJetTags'),
+        cms.InputTag('pfCombinedCvsBJetTags')
     ),
     # clone tag infos ATTENTION: these take lots of space!
     # usually the discriminators from the default algos

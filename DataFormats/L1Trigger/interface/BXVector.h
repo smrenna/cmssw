@@ -14,6 +14,8 @@ class BXVector  {
 
   typedef typename std::vector< T >::iterator       iterator;
   typedef typename std::vector< T >::const_iterator const_iterator;
+  typedef T value_type;
+  typedef typename std::vector< T >::size_type      size_type;
 
  public:
 
@@ -64,6 +66,9 @@ class BXVector  {
   // get N objects for a given BX
   unsigned size( int bx ) const;
 
+  // get N objects for all BXs together
+  unsigned size( ) const { return data_.size();}
+
   // add element with given BX index
   void push_back( int bx, T object );
  
@@ -87,6 +92,17 @@ class BXVector  {
 
   // check if data has empty location
   bool isEmpty(int bx) const;
+
+  // support looping over entire collection (note also that begin() is needed by edm::Ref)  
+  const_iterator begin() const {return data_.begin(); }
+  const_iterator end() const {return data_.end(); }
+  //int bx(const_iterator & iter) const; (potentially useful)
+  unsigned int key(const_iterator & iter) const { return iter - begin(); }
+
+  // array subscript operator (incited by TriggerSummaryProducerAOD::fillTriggerObject...)
+  T& operator[](std::size_t i) { return data_[i]; }
+  const T& operator[](std::size_t i) const { return data_[i]; }
+
 
  private:
 

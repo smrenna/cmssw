@@ -144,11 +144,13 @@ pat::PackedCandidate::~PackedCandidate() {
 
 float pat::PackedCandidate::dxy(const Point &p) const {
 	maybeUnpackBoth();
-	return -(vertex_.load()->X()-p.X()) * std::sin(float(p4_.load()->Phi())) + (vertex_.load()->Y()-p.Y()) * std::cos(float(p4_.load()->Phi()));
+	const float phi = float(p4_.load()->Phi())+dphi_;
+	return -(vertex_.load()->X()-p.X()) * std::sin(phi) + (vertex_.load()->Y()-p.Y()) * std::cos(phi);
 }
 float pat::PackedCandidate::dz(const Point &p) const {
     maybeUnpackBoth();
-    return (vertex_.load()->Z()-p.Z())  - ((vertex_.load()->X()-p.X()) * std::cos(float(p4_.load()->Phi())) + (vertex_.load()->Y()-p.Y()) * std::sin(float(p4_.load()->Phi()))) * p4_.load()->Pz()/p4_.load()->Pt();
+    const float phi = float(p4_.load()->Phi())+dphi_;
+    return (vertex_.load()->Z()-p.Z())  - ((vertex_.load()->X()-p.X()) * std::cos(phi) + (vertex_.load()->Y()-p.Y()) * std::sin(phi)) * p4_.load()->Pz()/p4_.load()->Pt();
 }
 
 void pat::PackedCandidate::unpackTrk() const {
@@ -169,8 +171,8 @@ void pat::PackedCandidate::unpackTrk() const {
     m(4,3)=dxydz_;
     m(4,4)=dzdz_;
     math::RhoEtaPhiVector p3(p4_.load()->pt(),p4_.load()->eta(),phiAtVtx());
-    int numberOfPixelHits = packedHits_ & 0x7 ;
-    int numberOfHits = (packedHits_>>3) + numberOfPixelHits;
+    int numberOfPixelHits = packedHits_ & trackPixelHitsMask ;
+    int numberOfHits = (packedHits_>>trackStripHitsShift) + numberOfPixelHits;
 
     int ndof = numberOfHits+numberOfPixelHits-5;
     reco::HitPattern hp, hpExpIn;
@@ -313,3 +315,7 @@ void pat::PackedCandidate::setPuppiWeight(float p, float p_nolep) {
 float pat::PackedCandidate::puppiWeight() const { return unpack8logClosed(packedPuppiweight_,-2,0,64)/2. + 0.5;}
 
 float pat::PackedCandidate::puppiWeightNoLep() const { return unpack8logClosed(packedPuppiweightNoLepDiff_+packedPuppiweight_,-2,0,64)/2. + 0.5;}
+
+void pat::PackedCandidate::setHcalFraction(float p) {
+  hcalFraction_ = 100*p;
+}

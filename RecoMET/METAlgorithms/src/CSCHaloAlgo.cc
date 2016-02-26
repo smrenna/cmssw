@@ -86,11 +86,16 @@ reco::CSCHaloData CSCHaloAlgo::Calculate(const CSCGeometry& TheCSCGeometry,
   int imucount=0;
   
   bool calomatched =false;
-  if(!geo){
-    edm::ESHandle<CaloGeometry> pGeo;
-    TheSetup.get<CaloGeometryRecord>().get(pGeo);
-    geo = pGeo.product();
-  }
+  bool ECALBmatched =false;
+  bool ECALEmatched =false;
+  bool HCALmatched =false;
+
+  //  if(!geo){
+  geo = 0;
+  edm::ESHandle<CaloGeometry> pGeo;
+  TheSetup.get<CaloGeometryRecord>().get(pGeo);
+  geo = pGeo.product();
+  //}
   bool trkmuunvetoisdefault = false; //Pb with low pt tracker muons that veto good csc segments/halo triggers. 
   //Test to "unveto" low pt trk muons. 
   //For now, we just recalculate everything without the veto and add an extra set of variables to the class CSCHaloData. 
@@ -190,7 +195,7 @@ reco::CSCHaloData CSCHaloAlgo::Calculate(const CSCGeometry& TheCSCGeometry,
 	  StoreTrack = true;	  
 
 	  float deta = abs( OuterMostGlobalPosition.eta() - InnerMostGlobalPosition.eta() );
-	  float dphi = abs(deltaPhi( OuterMostGlobalPosition.phi() , InnerMostGlobalPosition.phi() )) ;
+	  float dphi = abs(deltaPhi( OuterMostGlobalPosition.barePhi() , InnerMostGlobalPosition.barePhi() )) ;
 	  float theta = Track->outerMomentum().theta();
 	  float innermost_x = InnerMostGlobalPosition.x() ;
 	  float innermost_y = InnerMostGlobalPosition.y();
@@ -633,8 +638,10 @@ reco::CSCHaloData CSCHaloAlgo::Calculate(const CSCGeometry& TheCSCGeometry,
        bool hbhematched = HCALSegmentMatching(hbhehits,et_thresh_rh_hbhe,dphi_thresh_segvsrh_hbhe,dr_lowthresh_segvsrh_hbhe,dr_highthresh_segvsrh_hbhe,dt_lowthresh_segvsrh_hbhe,dt_highthresh_segvsrh_hbhe,iZ,iR,iT,iPhi);
        bool ebmatched = ECALSegmentMatching(ecalebhits,et_thresh_rh_eb,dphi_thresh_segvsrh_eb,dr_lowthresh_segvsrh_eb,dr_highthresh_segvsrh_eb,dt_lowthresh_segvsrh_eb,dt_highthresh_segvsrh_eb,iZ,iR,iT,iPhi);
        bool eematched = ECALSegmentMatching(ecaleehits,et_thresh_rh_ee,dphi_thresh_segvsrh_ee,dr_lowthresh_segvsrh_ee,dr_highthresh_segvsrh_ee,dt_lowthresh_segvsrh_ee,dt_highthresh_segvsrh_ee,iZ,iR,iT,iPhi); 
-       calomatched = calomatched? true: (hbhematched|| ebmatched|| eematched);
-
+       calomatched = calomatched? true : (hbhematched|| ebmatched|| eematched);
+       HCALmatched = HCALmatched? true :hbhematched;
+       ECALBmatched = ECALBmatched? true :ebmatched;
+       ECALEmatched = ECALEmatched? true :eematched;
 
        short int nSegs = 0;
        short int nSegs_alt = 0;
@@ -735,7 +742,10 @@ reco::CSCHaloData CSCHaloAlgo::Calculate(const CSCGeometry& TheCSCGeometry,
    TheCSCHaloData.SetSegmentsBothEndcaps_Loose_TrkMuUnVeto(both_endcaps_loose_alt);
    TheCSCHaloData.SetSegmentsBothEndcaps_Loose_dTcut_TrkMuUnVeto(both_endcaps_loose_dtcut_alt);
    TheCSCHaloData.SetSegmentIsCaloMatched(calomatched);
-
+   TheCSCHaloData.SetSegmentIsHCaloMatched(HCALmatched);
+   TheCSCHaloData.SetSegmentIsEBCaloMatched(ECALBmatched);
+   TheCSCHaloData.SetSegmentIsEECaloMatched(ECALEmatched);
+   
    return TheCSCHaloData;
 }
 

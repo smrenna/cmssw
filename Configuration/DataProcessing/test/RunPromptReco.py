@@ -9,6 +9,7 @@ testing with a few input files etc from the command line
 
 import sys
 import getopt
+import traceback
 
 from Configuration.DataProcessing.GetScenario import getScenario
 
@@ -29,25 +30,27 @@ class RunPromptReco:
         self.alcaRecos = None
         self.PhysicsSkims = None
         self.dqmSeq = None
+        self.setRepacked = False
+        self.isRepacked = False
 
     def __call__(self):
         if self.scenario == None:
             msg = "No --scenario specified"
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
         if self.globalTag == None:
             msg = "No --global-tag specified"
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
         if self.inputLFN == None:
             msg = "No --lfn specified"
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
 
         try:
             scenario = getScenario(self.scenario)
-        except Exception, ex:
+        except Exception as ex:
             msg = "Error getting Scenario implementation for %s\n" % (
                 self.scenario,)
             msg += str(ex)
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
 
         print "Retrieved Scenario: %s" % self.scenario
         print "Using Global Tag: %s" % self.globalTag
@@ -93,15 +96,18 @@ class RunPromptReco:
                 if self.dqmSeq:
                     kwds['dqmSeq'] = self.dqmSeq
 
+                if self.setRepacked:
+                    kwds['repacked'] = self.isRepacked
+
             process = scenario.promptReco(self.globalTag, **kwds)
 
-        except NotImplementedError, ex:
+        except NotImplementedError as ex:
             print "This scenario does not support Prompt Reco:\n"
             return
-        except Exception, ex:
+        except Exception as ex:
             msg = "Error creating Prompt Reco config:\n"
-            msg += str(ex)
-            raise RuntimeError, msg
+            msg += traceback.format_exc()
+            raise RuntimeError(msg)
 
         process.source.fileNames.append(self.inputLFN)
 
@@ -119,7 +125,7 @@ class RunPromptReco:
 
 if __name__ == '__main__':
     valid = ["scenario=", "reco", "aod", "miniaod","dqm", "dqmio", "no-output",
-             "global-tag=", "lfn=", "alcarecos=", "PhysicsSkims=", "dqmSeq=" ]
+             "global-tag=", "lfn=", "alcarecos=", "PhysicsSkims=", "dqmSeq=", "isRepacked", "isNotRepacked" ]
     usage = \
 """
 RunPromptReco.py <options>
@@ -131,6 +137,7 @@ Where options are:
  --miniaod (to enable MiniAOD output)
  --dqm (to enable DQM output)
  --dqmio (to enable DQMIO output)
+ --isRepacked --isNotRepacked (to override default repacked flags)
  --no-output (create config with no output, overrides other settings)
  --global-tag=GlobalTag
  --lfn=/store/input/lfn
@@ -149,7 +156,7 @@ python RunPromptReco.py --scenario=ppRun2 --reco --aod --dqmio --global-tag GLOB
 """
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", valid)
-    except getopt.GetoptError, ex:
+    except getopt.GetoptError as ex:
         print usage
         print str(ex)
         sys.exit(1)
@@ -182,5 +189,12 @@ python RunPromptReco.py --scenario=ppRun2 --reco --aod --dqmio --global-tag GLOB
             recoinator.PhysicsSkims = [ x for x in arg.split('+') if len(x) > 0 ]
         if opt == "--dqmSeq":
             recoinator.dqmSeq = [ x for x in arg.split('+') if len(x) > 0 ]
+        if opt == "--isRepacked":
+            recoinator.setRepacked = True
+            recoinator.isRepacked = True
+        if opt == "--isNotRepacked":
+            recoinator.setRepacked = True
+            recoinator.isRepacked = False
+
 
     recoinator()

@@ -62,6 +62,7 @@ private:
   void print(std::ostream& os,const DetLayer* dl);
   void print(std::ostream&os, const NavigationSchool::StateType & layers);
   void print(std::ostream&os, const NavigationSchool *nav);
+  void printUsingGeom(std::ostream&os, const NavigationSchool & nav);
 
 };
 
@@ -155,20 +156,20 @@ void NavigationSchoolAnalyzer::print(std::ostream&os, const NavigationSchool *na
 
 
 
-void printUsingGeom(std::ostream&os, const NavigationSchool & nav) {
+void NavigationSchoolAnalyzer::printUsingGeom(std::ostream&os, const NavigationSchool & nav) {
   auto dls = nav.allLayersInSystem(); // ok let's' keep it for debug
   for ( auto dl : dls) {
      os<<"####################\n"	 
-	<< "Layer: \n"
-       << (dl);
-      
+       << "Layer: \n";
+     print(os,dl);
+
      auto displayThose=  nav.nextLayers(*dl,insideOut);
       if (displayThose.empty())
         {os<<"*** no INsideOUT connection ***\n";}
       else{
 	os<<"*** INsideOUT CONNECTED TO ***\n";
 	for(std::vector<const DetLayer*>::iterator nl =displayThose.begin();nl!=displayThose.end();++nl)
-	  {os<<(*nl)<<"-----------------\n";}}
+          {print(os,*nl); os<<"-----------------\n";}}
 
       displayThose = nav.nextLayers(*dl,outsideIn);
       if (displayThose.empty())
@@ -176,7 +177,7 @@ void printUsingGeom(std::ostream&os, const NavigationSchool & nav) {
       else{
 	os<<"*** OUTsideIN CONNECTED TO ***\n";
 	for(std::vector<const DetLayer*>::iterator nl =displayThose.begin();nl!=displayThose.end();++nl)
-	  {os<<(*nl)<<"-----------------\n";}}
+          {print(os,*nl); os<<"-----------------\n";}}
   }
   os<<"\n";
 
@@ -226,6 +227,11 @@ NavigationSchoolAnalyzer::~NavigationSchoolAnalyzer() {}
 
 
 void NavigationSchoolAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
+
+  edm::ESHandle<TrackerTopology> tTopoHandle;
+  iSetup.get<TrackerTopologyRcd>().get(tTopoHandle);
+  tTopo = tTopoHandle.product();
+
   std::ostringstream byNav;
   std::ostringstream byGeom;
   std::ostringstream oldStyle;
@@ -237,7 +243,7 @@ void NavigationSchoolAnalyzer::analyze(const edm::Event& iEvent, const edm::Even
   //get the navigation school
   edm::ESHandle<NavigationSchool> nav;
   iSetup.get<NavigationSchoolRecord>().get(theNavigationSchoolName, nav);
-  byNav <<nav.product();
+  print(byNav,nav.product());
   printUsingGeom(byGeom,*nav.product());
   printOldStyle(oldStyle,*nav.product());
 
@@ -259,9 +265,9 @@ void NavigationSchoolAnalyzer::analyze(const edm::Event& iEvent, const edm::Even
 }
 
 void NavigationSchoolAnalyzer::beginRun(edm::Run & run, const edm::EventSetup& iSetup) {
-  edm::ESHandle<TrackerTopology> tTopoHandle;
-  iSetup.get<TrackerTopologyRcd>().get(tTopoHandle);
-  tTopo = tTopoHandle.product();
+//  edm::ESHandle<TrackerTopology> tTopoHandle;
+//  iSetup.get<TrackerTopologyRcd>().get(tTopoHandle);
+//  tTopo = tTopoHandle.product();
 
   //get the navigation school
   edm::ESHandle<NavigationSchool> nav;

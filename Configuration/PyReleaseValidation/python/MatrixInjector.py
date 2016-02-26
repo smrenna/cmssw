@@ -168,6 +168,8 @@ class MatrixInjector(object):
             wmsplit['RECOUP15_PU50']=1
             wmsplit['DIGIUP15_PU25']=1
             wmsplit['RECOUP15_PU25']=1
+            wmsplit['DIGIUP15_PU25HS']=1
+            wmsplit['RECOUP15_PU25HS']=1
             wmsplit['DIGIHIMIX']=5
             wmsplit['RECOHIMIX']=5
             wmsplit['RECODSplit']=1
@@ -177,10 +179,15 @@ class MatrixInjector(object):
             wmsplit['TTbar_13_ID']=1
             wmsplit['SingleMuPt10FS_ID']=1
             wmsplit['TTbarFS_ID']=1
-            wmsplit['RECODR250nsreHLT']=1
-            wmsplit['RECODR225nsreHLT']=1
-            wmsplit['HLTDR250ns']=3
-            wmsplit['HLTDR225ns']=3
+            wmsplit['RECODR2_50nsreHLT']=1
+            wmsplit['RECODR2_25nsreHLT']=1
+            wmsplit['HLTDR2_50ns']=1
+            wmsplit['HLTDR2_25ns']=1
+            wmsplit['Hadronizer']=1
+            wmsplit['DIGIUP15']=5
+            wmsplit['RECOUP15']=5
+            wmsplit['RECOAODUP15']=5
+            wmsplit['DBLMINIAODMCUP15NODQM']=5
                                     
             #import pprint
             #pprint.pprint(wmsplit)            
@@ -206,6 +213,9 @@ class MatrixInjector(object):
                     if len( [step for step in s[3] if "HARVESTGEN" in step] )>0:
                         chainDict['TimePerEvent']=0.01
                         thisLabel=thisLabel+"_gen"
+                    # for double miniAOD test
+                    if len( [step for step in s[3] if "DBLMINIAODMCUP15NODQM" in step] )>0:
+                        thisLabel=thisLabel+"_dblMiniAOD"
                     processStrPrefix=''
                     setPrimaryDs=None
                     for step in s[3]:
@@ -278,6 +288,10 @@ class MatrixInjector(object):
                                 if step in wmsplit:
                                     chainDict['nowmTasklist'][-1]['LumisPerJob']=wmsplit[step]
 
+                            # change LumisPerJob for Hadronizer steps. 
+                            if 'Hadronizer' in step: 
+                                chainDict['nowmTasklist'][-1]['LumisPerJob']=wmsplit['Hadronizer']
+
                             #print step
                             chainDict['nowmTasklist'][-1]['TaskName']=step
                             if setPrimaryDs:
@@ -307,6 +321,20 @@ class MatrixInjector(object):
                                 #chainDict['nowmTasklist'][-1]['AcquisitionEra']=(chainDict['CMSSWVersion']+'-PU_'+chainDict['nowmTasklist'][-1]['GlobalTag']).replace('::All','')+thisLabel
                                 chainDict['nowmTasklist'][-1]['AcquisitionEra']=chainDict['CMSSWVersion']
                                 chainDict['nowmTasklist'][-1]['ProcessingString']=processStrPrefix+chainDict['nowmTasklist'][-1]['GlobalTag'].replace('::All','')+thisLabel
+
+                            # specify different ProcessingString for double miniAOD dataset
+                            if ('DBLMINIAODMCUP15NODQM' in step): 
+                                chainDict['nowmTasklist'][-1]['ProcessingString']=chainDict['nowmTasklist'][-1]['ProcessingString']+'_miniAOD' 
+
+                            # modify memory settings for Multicore processing
+                            # implemented with reference to franzoni:multithread-CMSSW_7_4_3
+                            if(chainDict['Multicore']>1):
+                                # the scaling factor of 1.2GB / thread is empirical and measured on a SECOND round of tests with PU samples
+                                # the number of threads is assumed to be the same for all tasks
+                                # https://hypernews.cern.ch/HyperNews/CMS/get/edmFramework/3509/1/1/1.html
+                                chainDict['nowmTasklist'][-1]['Memory']= 3000 + int(  chainDict['Multicore']  -1)*1200
+                                # set also the overall memory to the same value; the agreement (in the phasing in) is that 
+                                chainDict['Memory'] = 3000 + int(  chainDict['Multicore']  -1)*1200
 
                         index+=1
                     #end of loop through steps

@@ -1,4 +1,4 @@
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -14,13 +14,15 @@
 #include <iostream>
 #include <string>
 
-class HcalGeometryTester : public edm::EDAnalyzer {
+class HcalGeometryTester : public edm::one::EDAnalyzer<> {
 
 public:
   explicit HcalGeometryTester( const edm::ParameterSet& );
-  ~HcalGeometryTester( void );
+  ~HcalGeometryTester( void ) {}
     
-  virtual void analyze( const edm::Event&, const edm::EventSetup& );
+  void beginJob() override {}
+  void analyze(edm::Event const&, edm::EventSetup const&) override;
+  void endJob() override {}
 
 private:
   void testValidDetIds(CaloSubdetectorGeometry* geom, const HcalTopology& topo, 
@@ -34,18 +36,14 @@ private:
 			    std::vector<int> &dins);
   void testFlexiGeomHF(CaloSubdetectorGeometry* geom);
 
-  edm::ParameterSet ps0;
-  std::string m_label;
-  bool        useOld_;
+  edm::ParameterSet ps0_;
+  bool              useOld_;
 };
 
 HcalGeometryTester::HcalGeometryTester( const edm::ParameterSet& iConfig ) :
-  ps0(iConfig),  m_label("_master") {
-  m_label = iConfig.getParameter<std::string>( "HCALGeometryLabel" );
+  ps0_(iConfig) {
   useOld_ = iConfig.getParameter<bool>( "UseOldLoader" );
 }
-
-HcalGeometryTester::~HcalGeometryTester() { }
 
 void HcalGeometryTester::analyze(const edm::Event& /*iEvent*/, 
 				 const edm::EventSetup& iSetup) {
@@ -58,10 +56,10 @@ void HcalGeometryTester::analyze(const edm::Event& /*iEvent*/,
   const HcalTopology topology = (*topologyHandle);
   CaloSubdetectorGeometry* geom(0);
   if (useOld_) {
-    HcalHardcodeGeometryLoader m_loader(ps0);
+    HcalHardcodeGeometryLoader m_loader(ps0_);
     geom = m_loader.load(topology);
   } else {
-    HcalFlexiHardcodeGeometryLoader m_loader(ps0);
+    HcalFlexiHardcodeGeometryLoader m_loader(ps0_);
     geom = m_loader.load(topology, hcons);
   }
 
@@ -73,7 +71,7 @@ void HcalGeometryTester::analyze(const edm::Event& /*iEvent*/,
   testTriggerGeometry(topology);
 
   testClosestCells(geom, topology);
-  std::cout << "Test SLHC Hcal Flexi geometry" << std::endl;
+  std::cout << "HcalGeometryTester::Test SLHC Hcal Geometry" << std::endl;
   std::vector<int> dins;
 
   testFlexiValidDetIds(geom, topology, DetId::Hcal, HcalBarrel, " BARREL ",  dins );
@@ -89,20 +87,22 @@ void HcalGeometryTester::testValidDetIds(CaloSubdetectorGeometry* caloGeom,
 					 DetId::Detector det, int subdet, 
 					 std::string label) {
 
-  std::cout << std::endl << label << " : " << std::endl;
+  std::stringstream s;
+  s << label << " : " << std::endl;
   const std::vector<DetId>& idshb = caloGeom->getValidDetIds(det, subdet);
  
   int counter = 0;
   for (std::vector<DetId>::const_iterator i=idshb.begin(); i!=idshb.end(); 
        i++, ++counter) {
     HcalDetId hid=(*i);
-    std::cout << counter << ": din " << topology.detId2denseId(*i) << ":" 
+    s << counter << ": din " << topology.detId2denseId(*i) << ":" 
 	      << hid;
     const CaloCellGeometry * cell = caloGeom->getGeometry(*i);
-    std::cout << *cell << std::endl;
+    s << *cell << std::endl;
   }
  
-  std::cout << "=== Total " << counter << " cells in " << label << std::endl;
+  s << "=== Total " << counter << " cells in " << label << std::endl;
+  std::cout << s.str();
 }
 
 void HcalGeometryTester::testClosestCells(CaloSubdetectorGeometry* g,
@@ -133,24 +133,25 @@ void HcalGeometryTester::testClosestCell(const HcalDetId & detId,
 					 CaloSubdetectorGeometry *geom) {
 
   const CaloCellGeometry* cell = geom->getGeometry(detId);
-  std::cout << "i/p " << detId << " position " << cell->getPosition();
   HcalDetId closest = geom->getClosestCell(cell->getPosition());
-  std::cout << " closest " << closest << std::endl;
+  std::cout << "i/p " << detId << " position " << cell->getPosition() 
+	    << " closest " << closest << std::endl;
 
   if(closest != detId) {
-    std::cout << "ERROR mismatch.  Original HCAL cell is "
-	      << detId << " while nearest is " << closest << std::endl;
+    std::cout << "HcalGeometryTester::Mismatch.  Original HCAL cell is "
+	      << detId << " while nearest is " << closest << " ***ERROR***"
+	      << std::endl;
   }
 }
 
 void HcalGeometryTester::testTriggerGeometry(const HcalTopology& topology) {
 
   HcalTrigTowerGeometry trigTowers( &topology );
-  std::cout << "HCAL trigger tower eta bounds " << std::endl;
+  std::cout << "HCAL trigger tower eta bounds:" << std::endl;
   for(int ieta = 1; ieta <= 32; ++ieta) {
     double eta1, eta2;
-    trigTowers.towerEtaBounds(ieta, eta1, eta2);
-    std::cout << ieta << " "  << eta1 << " " << eta2 << std::endl;
+    trigTowers.towerEtaBounds(ieta, 0, eta1, eta2);
+    std::cout << "[" << ieta << "] "  << eta1 << " " << eta2 << std::endl;
   }
 
   // now test some cell mappings
@@ -163,34 +164,42 @@ void HcalGeometryTester::testTriggerGeometry(const HcalTopology& topology) {
   typedef std::vector<HcalTrigTowerDetId> TowerDets;
   if (topology.valid(barrelDet)) {
     TowerDets barrelTowers = trigTowers.towerIds(barrelDet);
-    std::cout << "Trigger Tower Size: Barrel " << barrelTowers.size() << "\n";
+    std::cout << "Trigger Tower Size: Barrel " << barrelTowers.size()
+	       << std::endl;
     assert(barrelTowers.size() ==1);
-    std::cout << barrelTowers[0] << std::endl;
+    std::cout << "Tower[0] " << barrelTowers[0] << std::endl;
   } 
   if (topology.valid(endcapDet)) {
     TowerDets endcapTowers = trigTowers.towerIds(endcapDet);
-    std::cout << "Trigger Tower Size: Endcap " << endcapTowers.size() << "\n";
+    std::cout << "Trigger Tower Size: Endcap " << endcapTowers.size() 
+	      << std::endl;
     assert(endcapTowers.size() >=1);
-    std::cout << endcapTowers[0] << std::endl;
-    if (endcapTowers.size() > 1) std::cout << endcapTowers[1] << std::endl;
+    for (unsigned int k=0; k<endcapTowers.size(); ++k)
+      std::cout << "Tower[" << k << "] " << endcapTowers[k] << std::endl;
   }
   if (topology.valid(forwardDet1)) {
     TowerDets forwardTowers1 = trigTowers.towerIds(forwardDet1);
-    std::cout << "Trigger Tower Size: Forward1 " << forwardTowers1.size() << "\n";
-    assert(forwardTowers1.size() ==1);
-    std::cout << forwardTowers1[0] << std::endl;
+    std::cout << "Trigger Tower Size: Forward1 " << forwardTowers1.size()
+	      << std::endl;
+    assert(forwardTowers1.size() >=1);
+    for (unsigned int k=0; k<forwardTowers1.size(); ++k)
+      std::cout << "Tower[" << k << "] " << forwardTowers1[k] << std::endl;
   }
-  if (topology.valid(forwardDet1)) {
+  if (topology.valid(forwardDet2)) {
     TowerDets forwardTowers2 = trigTowers.towerIds(forwardDet2);
-    std::cout << "Trigger Tower Size: Forward2 " << forwardTowers2.size() << "\n";
-    assert(forwardTowers2.size() ==1);
-    std::cout << forwardTowers2[0] << std::endl;
+    std::cout << "Trigger Tower Size: Forward2 " << forwardTowers2.size()
+	      << std::endl;
+    assert(forwardTowers2.size() >=1);
+    for (unsigned int k=0; k<forwardTowers2.size(); ++k)
+      std::cout << "Tower[" << k << "] " << forwardTowers2[k] << std::endl;
   }
-  if (topology.valid(forwardDet1)) {
+  if (topology.valid(forwardDet3)) {
     TowerDets forwardTowers3 = trigTowers.towerIds(forwardDet3);
-    std::cout << "Trigger Tower Size: Forward3 " << forwardTowers3.size() << "\n";
-    assert(forwardTowers3.size() ==1);
-    std::cout << forwardTowers3[0] << std::endl;
+    std::cout << "Trigger Tower Size: Forward3 " << forwardTowers3.size()
+	      << std::endl;
+    assert(forwardTowers3.size() >=1);
+    for (unsigned int k=0; k<forwardTowers3.size(); ++k)
+      std::cout << "Tower[" << k << "] " << forwardTowers3[k] << std::endl;
   }
 }
 
@@ -200,49 +209,53 @@ void HcalGeometryTester::testFlexiValidDetIds(CaloSubdetectorGeometry* caloGeom,
 					      std::string label, 
 					      std::vector<int> &dins) {
 
-  std::cout << std::endl << label << " : " << std::endl;
+  std::stringstream s;
+  s << label << " : " << std::endl;
   const std::vector<DetId>& idshb = caloGeom->getValidDetIds(det, subdet);
     
   int counter = 0;
   for (std::vector<DetId>::const_iterator i=idshb.begin(); i!=idshb.end(); 
        i++, ++counter) {
     HcalDetId hid=(*i);
-    std::cout << counter << ": din " << topology.detId2denseId(*i) << ":" << hid;
+    s << counter << ": din " << topology.detId2denseId(*i) << ":" << hid;
     dins.push_back( topology.detId2denseId(*i));
 	
     const CaloCellGeometry * cell = caloGeom->getGeometry(*i);
-    std::cout << *cell << std::endl;
+    s << *cell << std::endl;
   }
 
   std::sort( dins.begin(), dins.end());
-  std::cout << "=== Total " << counter << " cells in " << label << std::endl;
+  s << "=== Total " << counter << " cells in " << label << std::endl;
 
   counter = 0;
   for (std::vector<int>::const_iterator i=dins.begin(); i != dins.end(); 
        ++i, ++counter) {
     HcalDetId hid = (topology.denseId2detId(*i));
     HcalDetId ihid = (topology.denseId2detId(dins[counter]));
-    std::cout << counter << ": din " << (*i) << " :" << hid << " == " << ihid << std::endl;
+    s << counter << ": din " << (*i) << " :" << hid << " == " << ihid << std::endl;
   }
+  std::cout << s.str();
 }
 
 void HcalGeometryTester::testFlexiGeomHF(CaloSubdetectorGeometry* caloGeom) {
 
-  std::cout << std::endl << "Test HF Geometry : " << std::endl;
+  std::stringstream s;
+  s << "Test HF Geometry : " << std::endl;
   for (int ieta = 29; ieta <=41; ++ieta) {
     HcalDetId cell3 (HcalForward, ieta, 3, 1);
     const CaloCellGeometry* cellGeometry3 = caloGeom->getGeometry (cell3);
     if (cellGeometry3) {
-      std::cout << "cell geometry iphi=3 -> ieta=" << ieta
-		<< " eta " << cellGeometry3->getPosition().eta () << "+-" 
-		<< std::abs(cellGeometry3->getCorners()[0].eta() -
-			    cellGeometry3->getCorners()[2].eta())/2
-		<< " phi " << cellGeometry3->getPosition().phi ()/3.1415*180 
-		<<  "+-" << std::abs(cellGeometry3->getCorners()[0].phi() -
-				     cellGeometry3->getCorners()[2].phi())/3.1415*180/2.
-		<< std::endl;
+      s << "cell geometry iphi=3 -> ieta=" << ieta
+	<< " eta " << cellGeometry3->getPosition().eta () << "+-" 
+	<< std::abs(cellGeometry3->getCorners()[0].eta() -
+		    cellGeometry3->getCorners()[2].eta())/2
+	<< " phi " << cellGeometry3->getPosition().phi ()/3.1415*180 
+	<<  "+-" << std::abs(cellGeometry3->getCorners()[0].phi() -
+			     cellGeometry3->getCorners()[2].phi())/3.1415*180/2.
+	<< std::endl;
     }
   }
+  std::cout << s.str();
 }
 
 DEFINE_FWK_MODULE(HcalGeometryTester);
